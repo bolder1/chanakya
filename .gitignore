@@ -1,0 +1,50 @@
+# dependencies
+node_modules/
+.pnp/
+.pnp.js
+.pnpm-store/
+
+# next
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# testing
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# data
+prisma/migrations/
+exports/
+backups/
+uploads/
+
+# os
+Thumbs.db

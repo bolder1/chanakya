@@ -1,0 +1,29 @@
+version: "3.9"
+
+# Chanakya local Postgres. Default DB path is Supabase via DATABASE_URL in
+# .env.local. This compose file is the fallback for offline / no-internet
+# development. Memory note: Docker Desktop on Windows can require admin
+# elevation to start — if `docker compose up` fails, restart Docker Desktop
+# from the tray (or use Supabase).
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: chanakya-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chanakya
+      POSTGRES_PASSWORD: chanakya
+      POSTGRES_DB: chanakya
+    ports:
+      - "5433:5432"
+    volumes:
+      - chanakya-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chanakya -d chanakya"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  chanakya-pgdata:

@@ -1,0 +1,753 @@
+// Chanakya — Prisma 7 schema
+//
+// Money is stored as integer paise (× 100). NEVER floats.
+// Money columns are typed BigInt so a ₹100 Cr payroll cycle (10^13 paise) fits.
+// Anomaly is polymorphic via nullable scoped FKs — one of payrollLineId |
+// invoiceLineId | procurementEntryId is set per row, keeping Prisma joins typed.
+//
+// Column names mirror MiniOrange's real Excel sheets:
+//   salary      → PayrollLine
+//   attendance  → Attendance
+//   shift       → ShiftEntry
+//   hostel      → HostelAllocation
+//
+// Datasource URL lives in prisma.config.ts (Prisma 7 dropped url from here).
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CFO_FINANCE
+  HR_OPS
+  VENDOR_MGR
+  OPS_MGR
+  LEADERSHIP_RO
+  SYS_ADMIN
+}
+
+enum CycleState {
+  OPEN
+  LOCKED
+  CLOSED
+}
+
+enum RunType {
+  REGULAR
+  BONUS
+  CORRECTION
+}
+
+enum EmploymentType {
+  FULL_TIME
+  CONTRACT
+  INTERN
+}
+
+enum DepositStatus {
+  PENDING
+  DEPOSITED
+  FAILED
+  HOLD
+}
+
+enum VendorStatus {
+  ACTIVE
+  PAUSED
+  OFFBOARDED
+}
+
+enum VendorCategory {
+  HARDWARE
+  SAAS
+  PROFESSIONAL
+  FACILITY
+  FOOD
+  TRAVEL
+  MARKETING
+  LOGISTICS
+  OTHER
+}
+
+enum POStatus {
+  OPEN
+  PARTIAL
+  CLOSED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  RECEIVED
+  APPROVED
+  PAID
+  DISPUTED
+}
+
+enum InvoiceSource {
+  EMAIL
+  UPLOAD
+  PORTAL
+  MANUAL
+}
+
+enum ProcurementUnit {
+  KG
+  UNIT
+  LITRE
+  HOUR
+  BOX
+  PACK
+  HOUR_PERSON
+}
+
+enum AnomalyKind {
+  // Payroll
+  SALARY_SPIKE
+  SALARY_DUPLICATE_PAY
+  STATUTORY_PF_MISSING
+  STATUTORY_PT_MISMATCH
+  NEW_HIRE_NO_PRORATION
+  NET_FORMULA_BROKEN
+  REIMBURSEMENT_OUTLIER
+  // Attendance
+  ATTENDANCE_DAYS_MISMATCH
+  LWP_NOT_REFLECTED
+  EXIT_PAID_FULL_MONTH
+  // Shift
+  SHIFT_ALLOW_MISSING
+  SHIFT_DAYS_NO_ALLOWANCE
+  // Hostel
+  HOSTEL_TOTAL_MISMATCH
+  HOSTEL_PAYROLL_MISMATCH
+  // Vendor invoice
+  INVOICE_MISSING_LINES
+  INVOICE_DUPLICATE
+  INVOICE_PRICE_DRIFT
+  INVOICE_DEDUCTION_MISMATCH
+  INVOICE_TAX_INCONSISTENT
+  INVOICE_GST_INVALID
+  // External spend
+  SPEND_CATEGORY_VARIANCE
+  SPEND_UNIT_PRICE_DRIFT
+  SPEND_OFF_CONTRACT
+  SPEND_SPLIT_PURCHASE
+}
+
+enum AnomalySeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AnomalyStatus {
+  OPEN
+  ACKNOWLEDGED
+  DISMISSED
+  RESOLVED
+}
+
+enum AnomalyEngine {
+  SCRIPTED
+  LLM
+}
+
+enum UploadKind {
+  PAYROLL
+  ATTENDANCE
+  SHIFT
+  HOSTEL
+  INVOICES
+  PROCUREMENT
+}
+
+enum UploadStatus {
+  PARSED
+  COMMITTED
+  FAILED
+}
+
+enum AIContextScope {
+  GLOBAL
+  CYCLE
+  VENDOR
+  CATEGORY
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum ConnectorStatus {
+  CONNECTED
+  DEGRADED
+  DISCONNECTED
+}
+
+enum NotificationKind {
+  ANOMALY
+  UPLOAD
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  SLACK
+  WHATSAPP
+  EMAIL
+}
+
+// ---------------------------------------------------------------------------
+// Users + Auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  role          Role
+  team          String?
+  active        Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  acknowledgedAnomalies Anomaly[]      @relation("AnomalyAcknowledger")
+  uploads               ExcelUpload[]
+  conversations         AIConversation[]
+  notifications         Notification[]
+  auditEntries          AuditEntry[]
+  payrollRunsGenerated  PayrollRun[]
+  cyclesLocked          Cycle[]
+
+  @@index([role, active])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Cycles + Employees
+// ---------------------------------------------------------------------------
+
+model Cycle {
+  id           String     @id @default(cuid())
+  label        String     @unique // "2026-04"
+  periodStart  DateTime   @db.Date
+  periodEnd    DateTime   @db.Date
+  totalDays    Int        // TOTAL DAYS IN THE MONTH from the sheets
+  state        CycleState @default(OPEN)
+  lockedAt     DateTime?
+  lockedById   String?
+  lockedBy     User?      @relation(fields: [lockedById], references: [id])
+  createdAt    DateTime   @default(now())
+
+  runs        PayrollRun[]
+  attendance  Attendance[]
+  shiftEntries ShiftEntry[]
+  hostelAllocations HostelAllocation[]
+  anomalies   Anomaly[]
+
+  @@index([state])
+  @@map("cycles")
+}
+
+model Employee {
+  // empId is the human-readable code shown on the salary sheet ("EMP-0142").
+  // externalId is the source-system numeric id (e.g. Zoho People), nullable.
+  empId             String         @id // "EMP-0001"
+  externalId        String?        @unique
+  name              String
+  email             String?        @unique
+  designation       String         // "Sr. Engineer", "AE"
+  department        String         // "Engineering / Security Products"
+  location          String         // "Pune", "Bengaluru HQ", "Remote"
+  managerEmpId      String?
+  employmentType    EmploymentType @default(FULL_TIME)
+  doj               DateTime       @db.Date
+  lwd               DateTime?      @db.Date  // Last Working Day if exited
+  ctcAnnualPaise    BigInt
+  basicMonthlyPaise BigInt
+  active            Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  payrollLines      PayrollLine[]
+  attendance        Attendance[]
+  shiftEntries      ShiftEntry[]
+  hostelAllocations HostelAllocation[]
+  anomalies         Anomaly[]
+
+  @@index([department, active])
+  @@index([managerEmpId])
+  @@map("employees")
+}
+
+// ---------------------------------------------------------------------------
+// Payroll — mirrors salary sheet columns
+// ---------------------------------------------------------------------------
+
+model PayrollRun {
+  id            String   @id @default(cuid())
+  cycleId       String
+  cycle         Cycle    @relation(fields: [cycleId], references: [id])
+  runType       RunType  @default(REGULAR)
+  runDate       DateTime @db.Date
+  generatedById String?
+  generatedBy   User?    @relation(fields: [generatedById], references: [id])
+  locked        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  lines PayrollLine[]
+
+  @@unique([cycleId, runType, runDate])
+  @@index([cycleId])
+  @@map("payroll_runs")
+}
+
+model PayrollLine {
+  id        String     @id @default(cuid())
+  runId     String
+  run       PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  empId     String
+  employee  Employee   @relation(fields: [empId], references: [empId])
+
+  // From attendance, copied onto each payroll line for snapshot integrity
+  totalDaysInMonth Int
+  presentDays      Int
+
+  // Earnings — matches salary sheet columns
+  basicPaise            BigInt
+  hraPaise              BigInt @default(0)
+  conveyanceAllowPaise  BigInt @default(0)
+  otherAllowPaise       BigInt @default(0)
+  otherEarningsPaise    BigInt @default(0)
+  shiftAllowPaise       BigInt @default(0)
+  bonusPaise            BigInt @default(0)
+  grossPaise            BigInt
+
+  // Deductions — matches salary sheet columns
+  pfPaise            BigInt @default(0)  // Provident Fund
+  esiPaise           BigInt @default(0)  // (kept for statutory completeness)
+  ptPaise            BigInt @default(0)  // PROF TAX
+  incomeTaxPaise     BigInt @default(0)  // INCOME TAX
+  loanDeductionPaise BigInt @default(0)  // LOAN DEDUCTION
+  guesthouseDedPaise BigInt @default(0)  // GUEST HOUSE/OTHER DEDUCTION (rolls up HostelAllocation.total)
+  insuranceDedPaise  BigInt @default(0)  // INSURANCE DEDUCTION
+  recoveryPaise      BigInt @default(0)  // RECOVERY
+  totalDeductionsPaise BigInt @default(0)
+
+  // Settlement
+  netPayPaise        BigInt
+  reimbursementPaise BigInt @default(0)
+  totalPayPaise      BigInt  // NET PAY + REIMBURSEMENT
+  depositStatus      DepositStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  anomalies Anomaly[]
+
+  @@unique([runId, empId])
+  @@index([empId, runId])
+  @@map("payroll_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance — mirrors attendance sheet
+// ---------------------------------------------------------------------------
+
+model Attendance {
+  id                String   @id @default(cuid())
+  cycleId           String
+  cycle             Cycle    @relation(fields: [cycleId], references: [id])
+  empId             String
+  employee          Employee @relation(fields: [empId], references: [empId])
+  totalDaysInMonth  Int      // TOTAL DAYS IN THE MONTH
+  totalLeavesTaken  Int      // Total Leaves Taken (paid)
+  lwpDays           Int      @default(0) // Leave Without Pay
+  presentDays       Int
+  dojThisMonth      DateTime? @db.Date  // DOJ if joined this cycle
+  lwdThisMonth      DateTime? @db.Date  // LWD if exited this cycle
+  isTestRow         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@unique([cycleId, empId])
+  @@index([cycleId])
+  @@map("attendance")
+}
+
+// ---------------------------------------------------------------------------
+// Shift — mirrors shift sheet
+// ---------------------------------------------------------------------------
+
+model ShiftEntry {
+  id              String   @id @default(cuid())
+  cycleId         String
+  cycle           Cycle    @relation(fields: [cycleId], references: [id])
+  empId           String
+  employee        Employee @relation(fields: [empId], references: [empId])
+  nightHomeDays     Int    @default(0) // No of Days for Night Shift - From home
+  phoneSupportDays  Int    @default(0) // No of Days for Phone Support
+  nightOfficeDays   Int    @default(0) // No of Days for Night Shift - From Office
+  weekendDays       Int    @default(0) // No of Days for Weekend Shift
+  computedAllowPaise BigInt @default(0) // What the policy says this should pay
+  isTestRow         Boolean @default(false)
+  createdAt         DateTime @default(now())
+
+  @@unique([cycleId, empId])
+  @@index([cycleId])
+  @@map("shift_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Hostel / Guest house — mirrors hostel deduction sheet
+// ---------------------------------------------------------------------------
+
+model HostelAllocation {
+  id                  String   @id @default(cuid())
+  cycleId             String
+  cycle               Cycle    @relation(fields: [cycleId], references: [id])
+  empId               String
+  employee            Employee @relation(fields: [empId], references: [empId])
+  guestHouse          String   // "Pune GH-1", "Bengaluru Saraswati", …
+  flatNo              String
+  // Line-item deductions
+  accommodationPaise  BigInt   @default(0)
+  maintenancePaise    BigInt   @default(0)
+  foodPaise           BigInt   @default(0)
+  transportPaise      BigInt   @default(0)
+  electricityPaise    BigInt   @default(0)
+  internetPaise       BigInt   @default(0)
+  totalPaise          BigInt   // TOTAL (validated by detector against the sum)
+  createdAt           DateTime @default(now())
+
+  @@unique([cycleId, empId])
+  @@index([cycleId, guestHouse])
+  @@map("hostel_allocations")
+}
+
+// ---------------------------------------------------------------------------
+// Vendors + Invoices
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id                 String         @id @default(cuid())
+  code               String         @unique // "VEN-014"
+  legalName          String
+  gstin              String?
+  panMasked          String?
+  category           VendorCategory
+  status             VendorStatus   @default(ACTIVE)
+  onboardedAt        DateTime       @default(now())
+  primaryContact     String?
+  paymentTermsDays   Int            @default(30)
+  createdAt          DateTime       @default(now())
+
+  pos       PurchaseOrder[]
+  invoices  Invoice[]
+  procurementEntries ProcurementEntry[]
+  anomalies Anomaly[]
+
+  @@index([category, status])
+  @@map("vendors")
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  poNumber    String   @unique
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  issuedOn    DateTime @db.Date
+  totalPaise  BigInt
+  status      POStatus @default(OPEN)
+  terms       String?
+
+  lines    PurchaseOrderLine[]
+  invoices Invoice[]
+
+  @@index([vendorId, issuedOn])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id            String  @id @default(cuid())
+  poId          String
+  po            PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  lineNo        Int
+  sku           String?
+  description   String
+  quantity      Float
+  unitPricePaise BigInt
+  taxPct        Float   @default(18)
+  totalPaise    BigInt
+
+  matchedInvoiceLines InvoiceLine[]
+
+  @@unique([poId, lineNo])
+  @@map("purchase_order_lines")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String
+  vendorId      String
+  vendor        Vendor        @relation(fields: [vendorId], references: [id])
+  poId          String?
+  po            PurchaseOrder? @relation(fields: [poId], references: [id])
+  issuedOn      DateTime      @db.Date
+  receivedOn    DateTime      @db.Date
+  dueOn         DateTime?     @db.Date
+
+  subtotalPaise BigInt
+  taxPaise      BigInt        @default(0)
+  tdsPaise      BigInt        @default(0)
+  totalPaise    BigInt
+
+  status        InvoiceStatus @default(RECEIVED)
+  source        InvoiceSource @default(UPLOAD)
+  rawFileRef    String?
+  createdAt     DateTime      @default(now())
+
+  lines     InvoiceLine[]
+  procurementEntries ProcurementEntry[]
+  anomalies Anomaly[]
+
+  @@unique([vendorId, invoiceNumber])
+  @@index([vendorId, receivedOn])
+  @@index([poId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id              String  @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  lineNo          Int
+  description     String
+  sku             String?
+  quantity        Float
+  unitPricePaise  BigInt
+  taxPct          Float   @default(18)
+  totalPaise      BigInt
+  matchedPoLineId String?
+  matchedPoLine   PurchaseOrderLine? @relation(fields: [matchedPoLineId], references: [id])
+
+  anomalies Anomaly[]
+
+  @@unique([invoiceId, lineNo])
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Procurement / External spend
+// ---------------------------------------------------------------------------
+
+model ProcurementCategory {
+  id                 String   @id @default(cuid())
+  name               String   @unique
+  monthlyBudgetPaise BigInt
+  owner              String?
+  createdAt          DateTime @default(now())
+
+  entries ProcurementEntry[]
+
+  @@map("procurement_categories")
+}
+
+model ProcurementEntry {
+  id             String   @id @default(cuid())
+  categoryId     String
+  category       ProcurementCategory @relation(fields: [categoryId], references: [id])
+  vendorId       String?
+  vendor         Vendor?  @relation(fields: [vendorId], references: [id])
+  invoiceId      String?
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+  occurredOn     DateTime @db.Date
+  description    String
+  unit           ProcurementUnit
+  quantity       Float
+  unitPricePaise BigInt
+  totalPaise     BigInt
+  location       String?
+  createdAt      DateTime @default(now())
+
+  anomalies Anomaly[]
+
+  @@index([categoryId, occurredOn])
+  @@index([vendorId, occurredOn])
+  @@map("procurement_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Anomalies — polymorphic via nullable scoped FKs
+// ---------------------------------------------------------------------------
+
+model Anomaly {
+  id                  String          @id @default(cuid())
+  kind                AnomalyKind
+  severity            AnomalySeverity
+  confidence          Int             // 1-5
+  status              AnomalyStatus   @default(OPEN)
+  title               String
+  summary             String
+  narrative           String          @db.Text
+  scriptedResponseKey String?
+
+  // polymorphic target (exactly one of these is set)
+  payrollLineId       String?
+  payrollLine         PayrollLine?    @relation(fields: [payrollLineId], references: [id])
+  invoiceLineId       String?
+  invoiceLine         InvoiceLine?    @relation(fields: [invoiceLineId], references: [id])
+  procurementEntryId  String?
+  procurementEntry    ProcurementEntry? @relation(fields: [procurementEntryId], references: [id])
+  invoiceId           String?
+  invoice             Invoice?        @relation(fields: [invoiceId], references: [id])
+  employeeEmpId       String?
+  employee            Employee?       @relation(fields: [employeeEmpId], references: [empId])
+  vendorId            String?
+  vendor              Vendor?         @relation(fields: [vendorId], references: [id])
+  cycleId             String?
+  cycle               Cycle?          @relation(fields: [cycleId], references: [id])
+
+  raisedAt            DateTime        @default(now())
+  raisedByEngine      AnomalyEngine   @default(SCRIPTED)
+  acknowledgedAt      DateTime?
+  acknowledgedById    String?
+  acknowledgedBy      User?           @relation("AnomalyAcknowledger", fields: [acknowledgedById], references: [id])
+
+  @@index([status])
+  @@index([kind, status])
+  @@index([cycleId])
+  @@index([severity, status])
+  @@map("anomalies")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log (append-only at app level; DB-level trigger in migration)
+// ---------------------------------------------------------------------------
+
+model AuditEntry {
+  id          String   @id @default(cuid())
+  occurredAt  DateTime @default(now())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id])
+  actorRole   Role?
+  action      String
+  objectType  String
+  objectId    String
+  before      Json?
+  after       Json?
+  cycleId     String?
+  workflow    String?
+
+  @@index([objectType, objectId])
+  @@index([occurredAt])
+  @@index([actorId, occurredAt])
+  @@map("audit_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Excel uploads
+// ---------------------------------------------------------------------------
+
+model ExcelUpload {
+  id            String       @id @default(cuid())
+  uploadedById  String
+  uploadedBy    User         @relation(fields: [uploadedById], references: [id])
+  uploadedAt    DateTime     @default(now())
+  kind          UploadKind
+  filename      String
+  sizeBytes     Int
+  sha256        String
+  rowCount      Int          @default(0)
+  warningCount  Int          @default(0)
+  errorCount    Int          @default(0)
+  status        UploadStatus @default(PARSED)
+  summary       Json?
+
+  @@index([uploadedById, uploadedAt])
+  @@map("excel_uploads")
+}
+
+// ---------------------------------------------------------------------------
+// AI conversations
+// ---------------------------------------------------------------------------
+
+model AIConversation {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  startedAt    DateTime       @default(now())
+  title        String         @default("New conversation")
+  contextScope AIContextScope @default(GLOBAL)
+  contextId    String?
+
+  messages AIMessage[]
+
+  @@index([userId, startedAt])
+  @@map("ai_conversations")
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AIMessageRole
+  content        String         @db.Text
+  citations      Json?
+  matchedKey     String?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Connectors (Zoho / Tally / Email / Slack / WhatsApp)
+// ---------------------------------------------------------------------------
+
+model Connector {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  displayName String
+  status      ConnectorStatus @default(DISCONNECTED)
+  lastSyncAt  DateTime?
+  lastSyncOk  Boolean?
+  lastError   String?
+  config      Json?
+  updatedAt   DateTime        @updatedAt
+
+  @@map("connectors")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  kind      NotificationKind
+  severity  AnomalySeverity?
+  title     String
+  body      String              @db.Text
+  link      String?
+  channel   NotificationChannel @default(IN_APP)
+  sentAt    DateTime            @default(now())
+  readAt    DateTime?
+
+  @@index([userId, readAt, sentAt])
+  @@map("notifications")
+}
