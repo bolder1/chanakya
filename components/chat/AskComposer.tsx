@@ -146,7 +146,7 @@ export function AskComposer() {
               type="button"
               onClick={() => submit()}
               disabled={pending || !input.trim()}
-              className="grid h-8 w-8 place-items-center rounded-md bg-[var(--navy-900)] text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
+              className="grid h-8 w-8 place-items-center rounded-full bg-[var(--navy-900)] text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
               aria-label="Send"
             >
               <Send className="h-3.5 w-3.5" />

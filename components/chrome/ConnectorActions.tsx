@@ -25,7 +25,7 @@ export function ConnectorActions({ slug }: ConnectorActionsProps) {
         type="button"
         onClick={onSync}
         disabled={pending}
-        className="rounded-md border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)] disabled:opacity-50"
+        className="rounded-full border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)] disabled:opacity-50"
       >
         {pending ? "Syncing…" : "Run sync"}
       </button>

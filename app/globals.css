@@ -1,52 +1,80 @@
 @import "tailwindcss";
 
 /*
- * Chanakya — design tokens (Razorpay-style, Indian fintech)
+ * Chanakya — design tokens (Stripi-inspired)
  *
- * Hard rules:
- *   - App background is a cool gray (#F7F8FB). NEVER cream.
- *   - Status is always dot + label. Color alone is never the signal.
- *   - No pure red. Danger uses muted red on muted bg.
- *   - Numbers and IDs use JetBrains Mono with tabular-nums.
- *   - Currency: `₹` glyph + en-IN grouping; summaries use lakh/crore.
+ * See DESIGN.md for the full system. Hard rules below.
  *
- * Tokens exposed as CSS custom properties and Tailwind utilities via @theme inline.
+ *   - Default body text: ink (#0d253d), never pure black.
+ *   - App background: canvas-soft (#f6f9fc).
+ *   - Money + numeric cells use `tabular-nums` via font-feature-settings: "tnum".
+ *   - Global `ss01` stylistic set on the body so Inter renders the brand's
+ *     single-story `a` everywhere.
+ *   - Buttons are pill-shaped (rounded-full, 9999px).
+ *   - Currency: ₹ glyph + en-IN grouping; summaries use lakh/crore.
+ *   - The saffron palette is retired. AI affordances anchor on `primary`.
+ *
+ * CSS-var names are kept stable across the brand pivot so we don't have to
+ * touch every Tailwind class. Old `--navy-700` and `--saffron-500` names
+ * now resolve to the new indigo / primary-soft palette.
  */
 
 :root {
-  /* Brand — deep navy primary + saffron accent (≤10% surface) */
-  --navy-900: #0d2a4d;
-  --navy-800: #143461;
-  --navy-700: #1a3d6c;
-  --navy-600: #224c83;
-  --navy-50: #e7eef8;
+  /* ---------------------- Brand ---------------------- */
+  --primary: #533afd;
+  --primary-deep: #4434d4;
+  --primary-press: #2e2b8c;
+  --primary-soft: #665efd;
+  --primary-subdued: #b9b9f9;
+  --brand-dark-900: #1c1e54;
 
-  --saffron-500: #f59e0b;
-  --saffron-400: #fbbf24;
-  --saffron-300: #fcd34d;
-  --saffron-50: #fef6e5;
+  /* Gradient mesh stops */
+  --ruby: #ea2261;
+  --magenta: #f96bee;
+  --lemon: #9b6829;
+  --shadow-blue: #003770;
 
-  /* Ink */
-  --ink-900: #0f172a;
-  --ink-800: #1e293b;
-  --ink-700: #334155;
-  --ink-500: #64748b;
-  --ink-400: #94a3b8;
-  --ink-300: #cbd5e1;
+  /* ---------------------- Ink ---------------------- */
+  --ink-900: #0d253d;     /* body text */
+  --ink-800: #1c1e54;     /* same as brand-dark-900 for dark-on-light strong */
+  --ink-700: #273951;     /* secondary text */
+  --ink-500: #64748d;     /* mute */
+  --ink-400: #61718a;     /* nav, table labels */
+  --ink-300: #a8c3de;     /* hairline-input, placeholder */
 
-  /* Surfaces */
-  --bg-app: #f7f8fb;        /* Cool app background. NEVER cream. */
-  --bg-surface: #ffffff;     /* Cards, sheets, modals. */
-  --bg-surface-2: #fafbfc;   /* Sub-surfaces (table rows). */
-  --bg-hover: #f0f3f8;
-  --bg-pressed: #e7ecf2;
+  /* ---------------------- Surfaces ---------------------- */
+  --canvas: #ffffff;
+  --canvas-soft: #f6f9fc;
+  --canvas-cream: #f5e9d4;
 
-  /* Borders */
-  --border: #e4e7ec;
-  --border-strong: #cfd6dd;
-  --border-focus: var(--navy-700);
+  --bg-app: var(--canvas-soft);
+  --bg-surface: var(--canvas);
+  --bg-surface-2: var(--canvas-soft);
+  --bg-hover: #eef2f7;
+  --bg-pressed: #e1e8f0;
 
-  /* Status — dot + bg + fg + border */
+  /* ---------------------- Borders ---------------------- */
+  --border: #e3e8ee;
+  --border-strong: #d0d8e0;
+  --border-focus: var(--primary);
+
+  /* ---------------------- Compat aliases (do not touch) ---------------------- */
+  /* These keep older `var(--navy-*)` / `var(--saffron-*)` references rendering
+     in the new palette without forcing JSX edits across every component. */
+  --navy-900: var(--brand-dark-900);
+  --navy-800: var(--primary-deep);
+  --navy-700: var(--primary);
+  --navy-600: var(--primary-soft);
+  --navy-50: var(--primary-subdued);
+
+  /* Saffron is retired. Map old saffron-* tokens to indigo equivalents so
+     legacy Tailwind classes (`text-[var(--saffron-500)]`) keep rendering. */
+  --saffron-500: var(--primary);
+  --saffron-400: var(--primary-soft);
+  --saffron-300: var(--primary-subdued);
+  --saffron-50: var(--canvas-soft);
+
+  /* ---------------------- Status (dot+label semantic) ---------------------- */
   --ok-bg: #e7f6ed;
   --ok-fg: #15803d;
   --ok-border: #bbf7d0;
@@ -72,36 +100,39 @@
   --neutral-border: #cbd5e1;
   --neutral-dot: #64748b;
 
-  /* Focus ring */
-  --ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--navy-700);
+  /* ---------------------- Focus ring ---------------------- */
+  --ring: 0 0 0 2px var(--canvas), 0 0 0 4px var(--primary);
 
-  /* Shadows — subtle, never floaty */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 16px 32px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.06);
+  /* ---------------------- Shadows ---------------------- */
+  --shadow-sm: 0 1px 3px rgba(0, 55, 112, 0.08);
+  --shadow-card: 0 1px 3px rgba(0, 55, 112, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 55, 112, 0.08), 0 2px 6px rgba(0, 55, 112, 0.04);
+  --shadow-lg: 0 16px 48px rgba(0, 55, 112, 0.10), 0 4px 10px rgba(0, 55, 112, 0.06);
 
-  /* Type scale */
-  --text-2xs: 11px;
-  --text-xs: 12px;
+  /* ---------------------- Type scale ---------------------- */
+  --text-2xs: 10px;
+  --text-xs: 11px;
   --text-sm: 13px;
-  --text-base: 14px;
-  --text-md: 15px;
-  --text-lg: 17px;
+  --text-base: 15px;
+  --text-md: 16px;
+  --text-lg: 18px;
   --text-xl: 20px;
-  --text-2xl: 24px;
-  --text-3xl: 28px;
-  --text-4xl: 40px;
+  --text-2xl: 22px;
+  --text-3xl: 26px;
+  --text-4xl: 32px;
+  --text-5xl: 48px;
+  --text-6xl: 56px;
 
-  /* Radii */
+  /* ---------------------- Radii ---------------------- */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-card: 10px;
+  --radius-card: 12px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-pill: 9999px;
 
-  /* Spacing */
+  /* ---------------------- Spacing ---------------------- */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -111,8 +142,9 @@
   --space-8: 32px;
   --space-10: 40px;
   --space-12: 48px;
+  --space-16: 64px;
 
-  /* Z layers */
+  /* ---------------------- Z layers ---------------------- */
   --z-sticky: 10;
   --z-nav: 20;
   --z-dropdown: 30;
@@ -122,16 +154,16 @@
 }
 
 @theme inline {
-  --color-navy-900: var(--navy-900);
-  --color-navy-800: var(--navy-800);
-  --color-navy-700: var(--navy-700);
-  --color-navy-600: var(--navy-600);
-  --color-navy-50: var(--navy-50);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-press: var(--primary-press);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-subdued: var(--primary-subdued);
+  --color-brand-dark-900: var(--brand-dark-900);
 
-  --color-saffron-500: var(--saffron-500);
-  --color-saffron-400: var(--saffron-400);
-  --color-saffron-300: var(--saffron-300);
-  --color-saffron-50: var(--saffron-50);
+  --color-ruby: var(--ruby);
+  --color-magenta: var(--magenta);
+  --color-lemon: var(--lemon);
 
   --color-ink-900: var(--ink-900);
   --color-ink-800: var(--ink-800);
@@ -139,6 +171,10 @@
   --color-ink-500: var(--ink-500);
   --color-ink-400: var(--ink-400);
   --color-ink-300: var(--ink-300);
+
+  --color-canvas: var(--canvas);
+  --color-canvas-soft: var(--canvas-soft);
+  --color-canvas-cream: var(--canvas-cream);
 
   --color-bg-app: var(--bg-app);
   --color-bg-surface: var(--bg-surface);
@@ -148,6 +184,17 @@
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+
+  /* Compat aliases (legacy navy/saffron names) */
+  --color-navy-900: var(--brand-dark-900);
+  --color-navy-800: var(--primary-deep);
+  --color-navy-700: var(--primary);
+  --color-navy-600: var(--primary-soft);
+  --color-navy-50: var(--primary-subdued);
+  --color-saffron-500: var(--primary);
+  --color-saffron-400: var(--primary-soft);
+  --color-saffron-300: var(--primary-subdued);
+  --color-saffron-50: var(--canvas-soft);
 
   --color-ok-bg: var(--ok-bg);
   --color-ok-fg: var(--ok-fg);
@@ -170,14 +217,16 @@
   --color-neutral-border: var(--neutral-border);
   --color-neutral-dot: var(--neutral-dot);
 
-  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, Arial, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
-    "JetBrains Mono", Menlo, Consolas, monospace;
+  /* Inter is the substitute for Sohne. ss01 enabled globally below. */
+  --font-sans: var(--font-inter), "SF Pro Display", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  /* `--font-mono` kept as an alias to sans so any leftover `font-mono`
+     classes render with Inter + tnum + tabular tracking. */
+  --font-mono: var(--font-inter), "SF Pro Display", system-ui, -apple-system,
+    sans-serif;
 }
 
-/* No dark mode in V1. Finance teams demo in office light; getting a number
-   wrong on a dark theme is a failure mode we don't want yet. */
+/* No dark mode in V1. Finance teams demo in office light. */
 
 html,
 body {
@@ -189,18 +238,36 @@ body {
   color: var(--ink-900);
   font-family: var(--font-sans);
   font-size: var(--text-base);
+  font-weight: 300;
+  font-feature-settings: "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  font-feature-settings: "cv11", "ss01";
 }
 
-/* Numeric tabular — always for amounts, IDs, timestamps */
+/* Tabular figures wherever they're explicitly opted in. The `.font-mono`
+   alias from the previous register also gets tnum so legacy classes still
+   render numbers cleanly. */
 .tabular,
 .font-mono {
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "ss01";
+  letter-spacing: -0.36px;
 }
 
-/* Focus visible everywhere */
+/* Display tier — automatic negative tracking via attribute selectors so
+   we don't have to thread a `tracking-*` class through every header. */
+h1.text-\[20px\],
+h1.text-\[24px\] {
+  font-weight: 300;
+  letter-spacing: -0.22px;
+}
+h1.text-\[28px\],
+h1.text-\[32px\] {
+  font-weight: 300;
+  letter-spacing: -0.64px;
+}
+
+/* Focus visible — indigo ring on the canvas */
 *:focus-visible {
   outline: none;
   box-shadow: var(--ring);
@@ -208,11 +275,11 @@ body {
 }
 
 ::selection {
-  background: var(--saffron-300);
-  color: var(--ink-900);
+  background: var(--primary-subdued);
+  color: var(--primary-deep);
 }
 
-/* Custom scrollbar — Razorpay-tight */
+/* Scrollbar — quieter than the previous register, closer to Stripi's */
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -231,10 +298,21 @@ body {
   background-clip: content-box;
 }
 
-/* Anti-pattern guardrails — kept as comments for future devs:
-   - no cream backgrounds (#FFF7E1, #FFFBEB, etc.)
-   - no decorative gradients on functional surfaces
-   - no spinners where a skeleton works
-   - no pure red destructive buttons; use --bad-fg on --bad-bg with text
-   - no exclamation marks in copy
-   - status pills must include a dot + label */
+/* ----------------------------------------------------------------------
+   Gradient mesh — used on /login and any future marketing surface.
+   Implemented as a horizontal multi-stop gradient. Real Stripi uses an
+   organic-blob SVG; this is the cleanest CSS approximation that still
+   captures the cream → orange → lavender → indigo → ruby wash.
+   ---------------------------------------------------------------------- */
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 10%, rgba(245, 233, 212, 0.85), transparent 60%),
+    radial-gradient(ellipse 70% 70% at 30% 20%, rgba(255, 200, 150, 0.75), transparent 60%),
+    radial-gradient(ellipse 80% 80% at 55% 30%, rgba(185, 185, 249, 0.85), transparent 65%),
+    radial-gradient(ellipse 70% 60% at 75% 15%, rgba(83, 58, 253, 0.55), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 95% 35%, rgba(249, 107, 238, 0.55), transparent 60%),
+    radial-gradient(ellipse 90% 70% at 100% 0%, rgba(234, 34, 97, 0.45), transparent 70%),
+    linear-gradient(180deg, #fdf6ec 0%, #f6f9fc 60%, #ffffff 100%);
+}
+
+/* Anti-patterns kept as comments — see DESIGN.md for full list */

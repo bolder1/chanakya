@@ -111,7 +111,7 @@ export function DropZone() {
             type="button"
             onClick={handleUpload}
             disabled={uploading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-50"
           >
             {uploading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             {uploading ? "Parsing…" : "Parse + preview"}

@@ -63,9 +63,9 @@ export function GenerateRegisterDrawer({ gate, variant = "primary", label }: Pro
       <a
         href={`/api/registers/${gate.cycleLabel}/export`}
         className={
-          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium " +
+          "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[14px] font-normal " +
           (variant === "primary"
-            ? "bg-[var(--navy-900)] text-white hover:bg-[var(--navy-800)]"
+            ? "bg-[var(--primary)] text-white hover:bg-[var(--primary-deep)] active:bg-[var(--primary-press)] active:translate-y-px"
             : "border border-[var(--border)] bg-white text-[var(--ink-700)] hover:border-[var(--border-strong)]")
         }
       >
@@ -81,9 +81,9 @@ export function GenerateRegisterDrawer({ gate, variant = "primary", label }: Pro
         type="button"
         onClick={() => setOpen(true)}
         className={
-          "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium " +
+          "inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[14px] font-normal " +
           (variant === "primary"
-            ? "bg-[var(--navy-900)] text-white hover:bg-[var(--navy-800)]"
+            ? "bg-[var(--primary)] text-white hover:bg-[var(--primary-deep)] active:bg-[var(--primary-press)] active:translate-y-px"
             : "border border-[var(--border)] bg-white text-[var(--ink-700)] hover:border-[var(--border-strong)]")
         }
       >
@@ -135,7 +135,7 @@ export function GenerateRegisterDrawer({ gate, variant = "primary", label }: Pro
                   </p>
                   <a
                     href={result.downloadUrl}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)]"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)]"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Download CSV
@@ -250,7 +250,7 @@ export function GenerateRegisterDrawer({ gate, variant = "primary", label }: Pro
                   type="button"
                   onClick={handleLock}
                   disabled={pending || confirmText !== "LOCK"}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--navy-900)] px-3 py-1.5 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
                 >
                   {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <Lock className="h-3.5 w-3.5" />

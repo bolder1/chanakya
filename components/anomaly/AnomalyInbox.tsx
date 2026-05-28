@@ -177,7 +177,7 @@ export function AnomalyInbox({ rows, facets, initialFilters }: AnomalyInboxProps
           <span className="text-[var(--ink-500)]">{rows.length} matched</span>
           <a
             href={exportHref}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)]"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)]"
           >
             <Download className="h-3.5 w-3.5" />
             Export CSV
@@ -207,7 +207,7 @@ export function AnomalyInbox({ rows, facets, initialFilters }: AnomalyInboxProps
               type="button"
               onClick={handleBulkAck}
               disabled={pending || eligibleAck === 0}
-              className="inline-flex items-center gap-1.5 rounded-md bg-[var(--navy-900)] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--navy-900)] px-2.5 py-1 text-[12px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-40"
             >
               {pending && <Loader2 className="h-3 w-3 animate-spin" />}
               Acknowledge {eligibleAck}
@@ -216,7 +216,7 @@ export function AnomalyInbox({ rows, facets, initialFilters }: AnomalyInboxProps
               type="button"
               onClick={() => setConfirmingDismiss(true)}
               disabled={pending || eligibleDismiss === 0}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--ink-700)] hover:border-[var(--border-strong)] disabled:opacity-40"
             >
               <XCircle className="h-3 w-3" />
               Dismiss {eligibleDismiss}…

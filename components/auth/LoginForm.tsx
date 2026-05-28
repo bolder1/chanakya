@@ -50,45 +50,52 @@ export function LoginForm() {
   };
 
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1fr_460px]">
-      {/* Left — brand panel */}
-      <aside className="hidden flex-col justify-between bg-[var(--navy-900)] px-12 py-10 text-white lg:flex">
+    <div className="grid min-h-[100dvh] grid-cols-1 lg:grid-cols-[1fr_460px]">
+      {/* Left — brand panel with gradient mesh */}
+      <aside className="gradient-mesh relative hidden flex-col justify-between px-12 py-10 lg:flex">
         <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--saffron-500)]">
-            <Sparkles className="h-4 w-4 text-[var(--navy-900)]" strokeWidth={2.5} />
+          <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--primary)]">
+            <Sparkles className="h-4 w-4 text-white" strokeWidth={2} />
           </div>
           <div>
-            <div className="font-semibold text-[16px] tracking-tight">Chanakya</div>
-            <div className="font-mono text-[10px] text-[var(--saffron-300)]">v0.1</div>
+            <div className="text-[16px] font-medium tracking-tight text-[var(--ink-900)]">
+              Chanakya
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--primary-deep)]">
+              v0.1
+            </div>
           </div>
         </div>
 
         <div className="max-w-md space-y-6">
-          <h1 className="text-[36px] font-semibold leading-tight tracking-tight">
+          <h1
+            className="text-[48px] font-light leading-[1.05] tracking-[-0.96px] text-[var(--ink-900)]"
+            style={{ fontFeatureSettings: '"ss01"' }}
+          >
             AI-powered payroll &amp; finance intelligence
           </h1>
-          <p className="text-[14px] leading-relaxed text-white/70">
+          <p className="text-[15px] leading-relaxed text-[var(--ink-secondary)]">
             See every salary cycle, every vendor invoice, every procurement
             entry — and the anomalies hiding in them — in one place. Built for
             MiniOrange Finance, HR Ops, Vendor Management, and Operations.
           </p>
-          <ul className="space-y-2 text-[12px] text-white/60">
+          <ul className="space-y-2 text-[13px] text-[var(--ink-700)]">
             <li className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[var(--saffron-400)]" />
-              486 employees · 18 monthly cycles · 41 vendors · 530 invoices
+              <span className="h-1 w-1 rounded-full bg-[var(--primary)]" />
+              <span className="tabular">486 employees · 18 monthly cycles · 41 vendors · 530 invoices</span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[var(--saffron-400)]" />
+              <span className="h-1 w-1 rounded-full bg-[var(--ruby)]" />
               Drag-drop Excel ingestion · header-vs-line reconciliation
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1 w-1 rounded-full bg-[var(--saffron-400)]" />
+              <span className="h-1 w-1 rounded-full bg-[var(--magenta)]" />
               Append-only audit log · role-based access · AI is advisory
             </li>
           </ul>
         </div>
 
-        <div className="text-[11px] text-white/40">
+        <div className="text-[11px] text-[var(--ink-500)]">
           © MiniOrange · Chanakya runs on MiniOrange infrastructure
         </div>
       </aside>
@@ -142,7 +149,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={pending || !email || !password}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[var(--navy-900)] px-3 text-[14px] font-medium text-white hover:bg-[var(--navy-800)] disabled:opacity-50"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 text-[15px] font-normal text-white hover:bg-[var(--primary-deep)] active:bg-[var(--primary-press)] active:translate-y-px disabled:opacity-50"
             >
               {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {pending ? "Signing in…" : "Sign in"}

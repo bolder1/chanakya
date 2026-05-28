@@ -8,12 +8,18 @@ export default async function AppLayout({
   const user = await requireUser();
   const caps = userCaps(user.role);
 
-  // Sidebar cycle status uses the active OPEN cycle
-  const activeCycle = await prisma.cycle.findFirst({
-    where: { state: "OPEN" },
-    orderBy: { periodEnd: "desc" },
-    select: { label: true, state: true },
-  });
+  // Prefer the most recent OPEN cycle; fall back to most recent of any state
+  // so a freshly-locked cycle still shows in the sidebar instead of "—".
+  const activeCycle =
+    (await prisma.cycle.findFirst({
+      where: { state: "OPEN" },
+      orderBy: { periodEnd: "desc" },
+      select: { label: true, state: true },
+    })) ??
+    (await prisma.cycle.findFirst({
+      orderBy: { periodEnd: "desc" },
+      select: { label: true, state: true },
+    }));
 
   return (
     <div className="flex h-screen bg-[var(--bg-app)]">
